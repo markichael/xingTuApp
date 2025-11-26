@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- 对应 context.externalCacheDir (你当前报错就是因为缺这个或者没写对) -->
     <external-cache-path name="my_external_cache" path="." />
     
-    <!-- 对应 context.cacheDir (以防万一你改了代码存内部) -->
+    <!-- 对应 context.cacheDir  -->
     <cache-path name="my_internal_cache" path="." />
     
-    <!-- 对应 context.getExternalFilesDir (标准外部文件) -->
+    <!-- 对应 context.getExternalFilesDir  -->
     <external-files-path name="my_external_files" path="." />
     
-    <!-- 对应 context.getFilesDir (内部文件) -->
+    <!-- 对应 context.getFilesDir  -->
     <files-path name="my_internal_files" path="." />
 </paths>

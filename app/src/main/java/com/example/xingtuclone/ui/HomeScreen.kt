@@ -84,7 +84,6 @@ fun HomeScreen() {
 }
 
 // ------------------------------------------------------------
-// 为了让代码整洁，把原来的首页内容抽离出来
 @Composable
 fun HomeContent(
     onImportClick: () -> Unit,

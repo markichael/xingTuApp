@@ -16,18 +16,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // 🔴 之前的代码里这里有个 XingtuCloneTheme { ... }
-            // 🟢 我们直接删掉它，只留下一行 HomeScreen() 即可！
             HomeScreen()
         }
     }
 }
-// 放在 MainActivity.kt 的最底下，不要放在 class 里面
 fun Context.createImageFile(): Uri {
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
     val imageFileName = "JPEG_" + timeStamp + "_"
 
-    // 🔥 重点：这里必须是 externalCacheDir，对应 XML 里的 <external-cache-path>
+    //  重点：这里必须是 externalCacheDir，对应 XML 里的 <external-cache-path>
     val image = File.createTempFile(
         imageFileName,
         ".jpg",
@@ -36,7 +33,7 @@ fun Context.createImageFile(): Uri {
 
     return FileProvider.getUriForFile(
         this,
-        "com.example.xingtuclone.fileprovider", // 再次确认这里和 Manifest 里的一模一样
+        "com.example.xingtuclone.fileprovider",
         image
     )
 }
