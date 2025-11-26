@@ -29,7 +29,11 @@ import jp.co.cyberagent.android.gpuimage.filter.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import java.io.InputStream
 enum class EditMode { FILTER, ADJUST }
 
 @Composable
@@ -61,7 +65,19 @@ fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
 
     // 加载图片
     LaunchedEffect(imageUri) {
-        gpuImageView.setImage(imageUri)
+        // 在后台线程加载并处理旋转
+        val bitmap = withContext(Dispatchers.IO) {
+            loadBitmapWithRotation(context, imageUri)
+        }
+
+        // 如果加载成功，把 Bitmap 传给 GPUImage
+        if (bitmap != null) {
+            gpuImageView.setImage(bitmap)
+        } else {
+            // 如果加载失败（极少情况），为了防止空指针，做个处理
+            Toast.makeText(context, "图片加载失败", Toast.LENGTH_SHORT).show()
+            onBack()
+        }
     }
 
     // 组合滤镜逻辑 (当参数变化时自动应用)
@@ -327,5 +343,55 @@ fun BottomTabButton(text: String, isSelected: Boolean, modifier: Modifier, onCli
                     .background(Color(0xFFCCFF00))
             )
         }
+    }
+}
+// ==========================================
+// ↓↓↓ 把这个函数放到 EditorScreen.kt 最底部 ↓↓↓
+// ==========================================
+
+
+/**
+ * 安全加载图片并处理旋转（解决 GPUImage 崩溃的核心）
+ */
+fun loadBitmapWithRotation(context: Context, uri: Uri): Bitmap? {
+    var inputStream: InputStream? = null
+    try {
+        val contentResolver = context.contentResolver
+        inputStream = contentResolver.openInputStream(uri) ?: return null
+
+        // 1. 解码图片
+        val bitmap = BitmapFactory.decodeStream(inputStream) ?: return null
+        inputStream.close()
+
+        // 2. 读取旋转信息 (Exif)
+        inputStream = contentResolver.openInputStream(uri) ?: return bitmap
+        val exifInterface = ExifInterface(inputStream)
+        val orientation = exifInterface.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
+        inputStream.close()
+
+        // 3. 如果需要旋转，处理 Bitmap
+        var rotation = 0f
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> rotation = 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> rotation = 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> rotation = 270f
+        }
+
+        return if (rotation != 0f) {
+            val matrix = Matrix()
+            matrix.postRotate(rotation)
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        } else {
+            bitmap
+        }
+
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
+    } finally {
+        inputStream?.close()
     }
 }

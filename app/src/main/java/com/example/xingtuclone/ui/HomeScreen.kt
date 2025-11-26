@@ -1,93 +1,148 @@
 package com.example.xingtuclone.ui
 
 import LightGreenBg
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
-import com.example.xingtuclone.createImageFile
+import androidx.core.content.FileProvider
 import com.example.xingtuclone.model.MenuItem
 import com.example.xingtuclone.ui.components.BigActionButton
 import com.example.xingtuclone.ui.components.MenuGridSection
 import com.example.xingtuclone.ui.components.XingtuBottomBar
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun HomeScreen() {
-    val context = LocalContext.current // 🔥 获取上下文
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
 
-    // 🔥 新增：用于临时存放相机拍的照片的 URI
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    // --- 状态管理 (使用 rememberSaveable 防止后台被杀后数据丢失) ---
 
-    // 1. 相册选择器 (之前的)
-    val photoPickerLauncher = rememberLauncherForActivityResult(
+    // 1. 普通修图图片的 Uri
+    var selectedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+
+    // 2. AI 修人像图片的 Uri
+    var faceBeautyUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+
+    // 3. 拼图图片列表 (多选)
+    var collageUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
+
+    // 4. 相机拍照的临时 Uri
+    var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+
+
+    // --- 启动器定义 ---
+
+    // A. 单图选择器 (用于普通修图)
+    val singlePhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri -> selectedImageUri = uri }
     )
 
-    // 🔥 2. 新增：相机启动器
+    // B. 单图选择器 (用于 AI 修人像)
+    val faceBeautyPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri -> faceBeautyUri = uri }
+    )
+
+    // C. 多图选择器 (用于拼图，最多 6 张)
+    val multiplePhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(6),
+        onResult = { uris ->
+            if (uris.isNotEmpty()) {
+                collageUris = uris
+            }
+        }
+    )
+
+    // D. 相机启动器
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
-            // 如果拍照成功，就把临时 URI 赋值给展示用的 URI
             if (success && tempCameraUri != null) {
+                // 拍照成功后，默认进入普通修图模式
                 selectedImageUri = tempCameraUri
             }
         }
     )
 
-    if (selectedImageUri != null) {
-        EditorScreen(
-            imageUri = selectedImageUri!!,
-            onBack = { selectedImageUri = null }
-        )
-    } else {
-        HomeContent(
-            onImportClick = {
-                photoPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
-            onCameraClick = {
-                // 🔥 点击相机按钮的逻辑
-                // 1. 先创建一个空文件的 URI
-                val uri = context.createImageFile()
-                tempCameraUri = uri // 记下来，等会儿拍完照要用
-                // 2. 启动相机，让它把照片存到这个 URI 里
-                cameraLauncher.launch(uri)
-            }
-        )
+    // --- 页面路由逻辑 (优先级控制) ---
+    // 根据哪个状态不为空，显示哪个页面
+    when {
+        // 1. 显示普通修图页
+        selectedImageUri != null -> {
+            EditorScreen(
+                imageUri = selectedImageUri!!,
+                onBack = { selectedImageUri = null }
+            )
+        }
+        // 2. 显示 AI 修人像页
+        faceBeautyUri != null -> {
+            FaceBeautyScreen(
+                imageUri = faceBeautyUri!!,
+                onBack = { faceBeautyUri = null }
+            )
+        }
+        // 3. 显示拼图页
+        collageUris.isNotEmpty() -> {
+            CollageScreen(
+                imageUris = collageUris,
+                onBack = { collageUris = emptyList() }
+            )
+        }
+        // 4. 显示首页
+        else -> {
+            HomeContent(
+                onImportClick = {
+                    singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onCameraClick = {
+                    val uri = context.createImageFile()
+                    tempCameraUri = uri
+                    cameraLauncher.launch(uri)
+                },
+                onFaceBeautyClick = {
+                    faceBeautyPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onCollageClick = {
+                    multiplePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            )
+        }
     }
 }
 
 // ------------------------------------------------------------
+// 首页 UI 内容
+// ------------------------------------------------------------
 @Composable
 fun HomeContent(
     onImportClick: () -> Unit,
-    onCameraClick: () -> Unit
+    onCameraClick: () -> Unit,
+    onFaceBeautyClick: () -> Unit,
+    onCollageClick: () -> Unit
 ) {
     val menuItems = listOf(
         MenuItem("批量修图", Icons.Outlined.PhotoLibrary),
@@ -114,7 +169,7 @@ fun HomeContent(
             HeaderSection()
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 第一排按钮
+            // 第一排按钮：导入 + 相机
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -125,7 +180,7 @@ fun HomeContent(
                     backgroundColor = Color.Black,
                     contentColor = Color.White,
                     modifier = Modifier.weight(1f),
-                    onClick = onImportClick // 🔥 绑定点击
+                    onClick = onImportClick
                 )
                 BigActionButton(
                     text = "相机",
@@ -133,13 +188,13 @@ fun HomeContent(
                     backgroundColor = LightGreenBg,
                     contentColor = Color.Black,
                     modifier = Modifier.weight(1f),
-                    onClick = onCameraClick // 🔥 绑定点击
+                    onClick = onCameraClick
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 第二排按钮 (暂时还没加功能，onClick 传个空函数)
+            // 第二排按钮：AI修人像 + 拼图
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -150,7 +205,7 @@ fun HomeContent(
                     backgroundColor = LightGreenBg,
                     contentColor = Color.Black,
                     modifier = Modifier.weight(1f),
-                    onClick = {}
+                    onClick = onFaceBeautyClick
                 )
                 BigActionButton(
                     text = "拼图",
@@ -158,55 +213,17 @@ fun HomeContent(
                     backgroundColor = LightGreenBg,
                     contentColor = Color.Black,
                     modifier = Modifier.weight(1f),
-                    onClick = {}
+                    onClick = onCollageClick
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // 底部菜单网格
             Box(modifier = Modifier.height(250.dp)) {
                 MenuGridSection(menuItems)
             }
         }
-    }
-}
-
-// ------------------------------------------------------------
-// 一个简单的预览/编辑页面，用于展示选中的图片
-@Composable
-fun SimpleEditorScreen(imageUri: Uri, onBack: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().background(Color.Black),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // 顶部栏
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Text(
-                text = "🔙 返回首页",
-                color = Color.White,
-                fontSize = 18.sp,
-                modifier = Modifier.clickable { onBack() }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 🔥 使用 Coil 显示选中的图片
-        Image(
-            painter = rememberAsyncImagePainter(imageUri),
-            contentDescription = "Selected Image",
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f), // 让图片占据剩余空间
-            contentScale = ContentScale.Fit // 保持比例展示
-        )
-
-        Spacer(modifier = Modifier.height(50.dp))
-        Text("这里以后放修图工具栏", color = Color.Gray)
-        Spacer(modifier = Modifier.height(50.dp))
     }
 }
 
@@ -245,4 +262,30 @@ fun HeaderSection() {
             modifier = Modifier.size(24.dp)
         )
     }
+}
+
+// ------------------------------------------------------------
+// 辅助工具：创建临时图片文件
+// ------------------------------------------------------------
+fun Context.createImageFile(): Uri {
+    // 1. 创建文件名 (例如: JPEG_20231126_120000_)
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val imageFileName = "JPEG_" + timeStamp + "_"
+
+    // 2. 创建临时文件
+    // 注意：必须使用 externalCacheDir，对应 file_paths.xml 里的 external-cache-path
+    val image = File.createTempFile(
+        imageFileName,
+        ".jpg",
+        externalCacheDir
+    )
+
+    // 3. 获取 URI
+    // ⚠️⚠️⚠️ 警告：如果你改了包名，下面字符串必须改成你的包名 + ".fileprovider"
+    // 请检查 AndroidManifest.xml 里的 authorities 是否一致
+    return FileProvider.getUriForFile(
+        this,
+        "com.example.xingtuclone.fileprovider",
+        image
+    )
 }
