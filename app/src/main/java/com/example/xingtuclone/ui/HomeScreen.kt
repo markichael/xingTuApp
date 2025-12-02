@@ -45,9 +45,11 @@ fun HomeScreen() {
 
     // 2. AI 修人像图片的 Uri
     var faceBeautyUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var savedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // 3. 拼图图片列表 (多选)
     var collageUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
+
 
     // 4. 相机拍照的临时 Uri
     var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
@@ -77,6 +79,7 @@ fun HomeScreen() {
         }
     )
 
+
     // D. 相机启动器
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -90,29 +93,53 @@ fun HomeScreen() {
 
     // --- 页面路由逻辑 (优先级控制) ---
     // 根据哪个状态不为空，显示哪个页面
+    // 统一编辑入口：根据按钮优先级，进入统一 EditorScreen
     when {
-        // 1. 显示普通修图页
+        savedImageUri != null -> {
+            SaveResultScreen(
+                savedUri = savedImageUri!!,
+                onBack = { savedImageUri = null },
+                onHome = {
+                    // 统一返回首页：清空所有编辑入口状态
+                    savedImageUri = null
+                    selectedImageUri = null
+                    faceBeautyUri = null
+                    collageUris = emptyList()
+                },
+                onRetouch = {
+                    singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    savedImageUri = null
+                }
+            )
+        }
         selectedImageUri != null -> {
-            EditorScreen(
-                imageUri = selectedImageUri!!,
-                onBack = { selectedImageUri = null }
+            EditorShell(
+                imageUris = listOf(selectedImageUri!!),
+                onBack = { selectedImageUri = null },
+                initialCategory = EditorCategory.FILTER,
+                onSaved = { uri -> savedImageUri = uri }
             )
         }
-        // 2. 显示 AI 修人像页
         faceBeautyUri != null -> {
-            FaceBeautyScreen(
-                imageUri = faceBeautyUri!!,
-                onBack = { faceBeautyUri = null }
+            EditorShell(
+                imageUris = listOf(faceBeautyUri!!),
+                onBack = { faceBeautyUri = null },
+                initialCategory = EditorCategory.PORTRAIT,
+                onSaved = { uri -> savedImageUri = uri }
             )
         }
-        // 3. 显示拼图页
         collageUris.isNotEmpty() -> {
             CollageScreen(
                 imageUris = collageUris,
-                onBack = { collageUris = emptyList() }
+                onBack = { collageUris = emptyList() },
+                onHome = {
+                    collageUris = emptyList()
+                    selectedImageUri = null
+                    faceBeautyUri = null
+                    savedImageUri = null
+                }
             )
         }
-        // 4. 显示首页
         else -> {
             HomeContent(
                 onImportClick = {

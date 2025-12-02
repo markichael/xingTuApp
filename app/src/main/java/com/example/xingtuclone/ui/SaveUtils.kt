@@ -70,3 +70,39 @@ suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap): Boolean {
         return@withContext success
     }
 }
+
+/** 保存并返回保存后的 Uri，便于展示保存结果页 */
+suspend fun saveBitmapToGalleryReturnUri(context: Context, bitmap: Bitmap): android.net.Uri? {
+    return withContext(Dispatchers.IO) {
+        val filename = "Xingtu_${System.currentTimeMillis()}.jpg"
+        var fos: OutputStream? = null
+        var imageUri: android.net.Uri? = null
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val resolver = context.contentResolver
+                imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                if (imageUri != null) {
+                    fos = resolver.openOutputStream(imageUri)
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos!!)
+                    fos?.close()
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(imageUri!!, contentValues, null, null)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            imageUri = null
+        }
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, if (imageUri != null) "保存成功！已存入相册" else "保存失败", Toast.LENGTH_SHORT).show()
+        }
+        imageUri
+    }
+}

@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,7 +61,7 @@ enum class CollageType(val count: Int, val displayName: String) {
     BIG_MID(6, "中间大")
 }
 @Composable
-fun CollageScreen(imageUris: List<Uri>, onBack: () -> Unit) {
+fun CollageScreen(imageUris: List<Uri>, onBack: () -> Unit, onHome: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -90,13 +91,21 @@ fun CollageScreen(imageUris: List<Uri>, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Close, "Back", tint = Color.White, modifier = Modifier.clickable { onBack() })
-            Text("拼图 (长按拖拽交换)", color = Color.White, fontSize = 18.sp) // 改个标题提示用户
-            Icon(
-                Icons.Default.Check, "Save",
-                tint = if (isSaving) Color.Gray else Color(0xFFCCFF00),
-                modifier = Modifier.clickable(enabled = !isSaving) {
-                    isSaving = true
-                    scope.launch {
+            Text("拼图 (长按拖拽交换)", color = Color.White, fontSize = 18.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Home, "Home",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .clickable { onHome() }
+                )
+                Icon(
+                    Icons.Default.Check, "Save",
+                    tint = if (isSaving) Color.Gray else Color(0xFFCCFF00),
+                    modifier = Modifier.clickable(enabled = !isSaving) {
+                        isSaving = true
+                        scope.launch {
                         // 1. 检查 View 是否存在
                         if (captureView == null || captureView!!.width <= 0) {
                             Toast.makeText(context, "正在渲染中，请稍后再试...", Toast.LENGTH_SHORT).show()
@@ -128,8 +137,9 @@ fun CollageScreen(imageUris: List<Uri>, onBack: () -> Unit) {
                             isSaving = false
                         }
                     }
-                }
-            )
+                    }
+                )
+            }
         }
 
         // 2. 预览区
