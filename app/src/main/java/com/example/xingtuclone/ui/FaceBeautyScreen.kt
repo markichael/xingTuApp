@@ -633,6 +633,17 @@ fun applyColorMatrixRS(context: Context, bitmap: Bitmap, matrix: android.renders
     }
 }
 
+fun blendMatrix(identity: android.renderscript.Matrix4f, target: android.renderscript.Matrix4f, alpha: Float): android.renderscript.Matrix4f {
+    val a = alpha.coerceIn(0f, 1f)
+    val id = identity.array
+    val tg = target.array
+    val out = FloatArray(16)
+    for (i in 0 until 16) {
+        out[i] = id[i] * (1f - a) + tg[i] * a
+    }
+    return android.renderscript.Matrix4f(out)
+}
+
 @Composable
 fun FilterEditor(imageUri: Uri?, onBack: () -> Unit) {
     val context = LocalContext.current

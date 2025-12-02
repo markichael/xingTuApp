@@ -1,6 +1,7 @@
 // ui/components/MenuGrid.kt
 package com.example.xingtuclone.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.example.xingtuclone.model.MenuItem
 
 @Composable
-fun MenuGridSection(menuItems: List<MenuItem>) {
+fun MenuGridSection(menuItems: List<MenuItem>, onItemClick: (MenuItem) -> Unit = {}) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(4), // 一行4个
         modifier = Modifier
@@ -33,7 +34,8 @@ fun MenuGridSection(menuItems: List<MenuItem>) {
         items(menuItems) { item ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.clickable { onItemClick(item) }
             ) {
                 Icon(
                     imageVector = item.icon,

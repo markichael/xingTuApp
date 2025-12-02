@@ -28,7 +28,6 @@ import androidx.core.content.FileProvider
 import com.example.xingtuclone.model.MenuItem
 import com.example.xingtuclone.ui.components.BigActionButton
 import com.example.xingtuclone.ui.components.MenuGridSection
-import com.example.xingtuclone.ui.components.XingtuBottomBar
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -46,6 +45,8 @@ fun HomeScreen() {
     // 2. AI 修人像图片的 Uri
     var faceBeautyUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var savedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var batchUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
+    var magicEraseUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // 3. 拼图图片列表 (多选)
     var collageUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
@@ -77,6 +78,18 @@ fun HomeScreen() {
                 collageUris = uris
             }
         }
+    )
+
+    // E. 批量修图多选
+    val batchPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(20),
+        onResult = { uris -> if (uris.isNotEmpty()) batchUris = uris }
+    )
+
+    // F. 魔法消除单图选择器
+    val magicErasePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri -> magicEraseUri = uri }
     )
 
 
@@ -128,6 +141,13 @@ fun HomeScreen() {
                 onSaved = { uri -> savedImageUri = uri }
             )
         }
+        magicEraseUri != null -> {
+            MagicEraseScreen(
+                imageUri = magicEraseUri!!,
+                onBack = { magicEraseUri = null },
+                onSaved = { uri -> savedImageUri = uri }
+            )
+        }
         collageUris.isNotEmpty() -> {
             CollageScreen(
                 imageUris = collageUris,
@@ -139,6 +159,9 @@ fun HomeScreen() {
                     savedImageUri = null
                 }
             )
+        }
+        batchUris.isNotEmpty() -> {
+            BatchEditScreen(imageUris = batchUris, onBack = { batchUris = emptyList() })
         }
         else -> {
             HomeContent(
@@ -155,6 +178,12 @@ fun HomeScreen() {
                 },
                 onCollageClick = {
                     multiplePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onBatchClick = {
+                    batchPhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onMagicEraseClick = {
+                    magicErasePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             )
         }
@@ -169,21 +198,18 @@ fun HomeContent(
     onImportClick: () -> Unit,
     onCameraClick: () -> Unit,
     onFaceBeautyClick: () -> Unit,
-    onCollageClick: () -> Unit
+    onCollageClick: () -> Unit,
+    onBatchClick: () -> Unit,
+    onMagicEraseClick: () -> Unit
 ) {
     val menuItems = listOf(
         MenuItem("批量修图", Icons.Outlined.PhotoLibrary),
-        MenuItem("画质超清", Icons.Outlined.HighQuality),
         MenuItem("魔法消除", Icons.Default.AutoFixHigh),
-        MenuItem("智能抠图", Icons.Outlined.ContentCut),
         MenuItem("AI修图", Icons.Default.AutoAwesome),
-        MenuItem("一键消除", Icons.Outlined.CleaningServices),
-        MenuItem("瘦脸瘦身", Icons.Default.Face),
-        MenuItem("所有工具", Icons.Default.GridView)
+        MenuItem("拼图", Icons.Default.Dashboard)
     )
 
     Scaffold(
-        bottomBar = { XingtuBottomBar() },
         containerColor = Color.White
     ) { paddingValues ->
         Column(
@@ -247,8 +273,16 @@ fun HomeContent(
             Spacer(modifier = Modifier.height(32.dp))
 
             // 底部菜单网格
-            Box(modifier = Modifier.height(250.dp)) {
-                MenuGridSection(menuItems)
+                Box(modifier = Modifier.height(250.dp)) {
+                MenuGridSection(menuItems) { item ->
+                    when (item.title) {
+                        "批量修图" -> onBatchClick()
+                        "AI修图" -> onFaceBeautyClick()
+                        "魔法消除" -> onMagicEraseClick()
+                        "拼图" -> onCollageClick()
+                        else -> {}
+                    }
+                }
             }
         }
     }

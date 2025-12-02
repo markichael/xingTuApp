@@ -121,8 +121,9 @@ fun EditorShell(
     var whiten by remember { mutableFloatStateOf(0.3f) }
     var ruddy by remember { mutableFloatStateOf(0.3f) }
     var sharpen by remember { mutableFloatStateOf(1.0f) }
+    var filterStrength by remember { mutableFloatStateOf(1.0f) }
 
-    LaunchedEffect(category, selectedTool, smooth, whiten, ruddy, sharpen, loaded, isComparing) {
+    LaunchedEffect(category, selectedTool, smooth, whiten, ruddy, sharpen, filterStrength, loaded, isComparing) {
         if (!loaded || preview == null) return@LaunchedEffect
         if (isComparing) { display = preview; return@LaunchedEffect }
         when (category) {
@@ -133,7 +134,7 @@ fun EditorShell(
                 if (bmp != null) display = bmp
             }
             EditorCategory.FILTER -> {
-                val matrix = when (selectedTool) {
+                val target = when (selectedTool) {
                     "原图" -> android.renderscript.Matrix4f()
                     "暖色" -> brightMatrix(1.02f)
                     "冷色" -> matRM(
@@ -180,6 +181,7 @@ fun EditorShell(
                     )
                     else -> android.renderscript.Matrix4f()
                 }
+                val matrix = blendMatrix(android.renderscript.Matrix4f(), target, filterStrength)
                 val bmp = withContext(Dispatchers.IO) { applyColorMatrixRS(context, preview!!, matrix) }
                 if (bmp != null) display = bmp
             }
@@ -225,7 +227,57 @@ fun EditorShell(
                         val out = withContext(Dispatchers.IO) {
                             when (category) {
                                 EditorCategory.PORTRAIT -> beauty.process(original!!, smooth, whiten, ruddy, sharpen)
-                                EditorCategory.FILTER -> display
+                                EditorCategory.FILTER -> {
+                                    val t = when (selectedTool) {
+                                        "原图" -> android.renderscript.Matrix4f()
+                                        "暖色" -> brightMatrix(1.02f)
+                                        "冷色" -> matRM(
+                                            0.95f, 0f,    0f,    0f,
+                                            0f,    1.0f,  0f,    0f,
+                                            0f,    0.05f, 1.05f, 0f,
+                                            0f,    0f,    0f,    1f
+                                        )
+                                        "黑白" -> {
+                                            val rw = 0.299f; val gw = 0.587f; val bw = 0.114f
+                                            matRM(
+                                                rw, gw, bw, 0f,
+                                                rw, gw, bw, 0f,
+                                                rw, gw, bw, 0f,
+                                                0f, 0f, 0f, 1f
+                                            )
+                                        }
+                                        "复古" -> matRM(
+                                            0.393f, 0.769f, 0.189f, 0f,
+                                            0.349f, 0.686f, 0.168f, 0f,
+                                            0.272f, 0.534f, 0.131f, 0f,
+                                            0f,     0f,     0f,     1f
+                                        )
+                                        "增饱和" -> saturationMatrix(1.35f)
+                                        "降饱和" -> saturationMatrix(0.75f)
+                                        "柔和" -> saturationMatrix(0.85f)
+                                        "青橙" -> matRM(
+                                            1.05f, -0.04f, 0f,   0f,
+                                            0f,    0.95f,  0f,   0f,
+                                            0f,     0.06f, 1.06f,0f,
+                                            0f,     0f,    0f,   1f
+                                        )
+                                        "粉调" -> matRM(
+                                            1.06f, 0.02f, 0.02f, 0f,
+                                            0.02f, 0.98f, 0.0f,  0f,
+                                            0.02f, 0.0f,  1.02f, 0f,
+                                            0f,    0f,    0f,    1f
+                                        )
+                                        "绿野" -> matRM(
+                                            0.95f, 0.0f,  0.0f,  0f,
+                                            0.05f, 1.05f, 0.0f,  0f,
+                                            0.0f,  0.0f,  0.95f, 0f,
+                                            0f,    0f,    0f,    1f
+                                        )
+                                        else -> android.renderscript.Matrix4f()
+                                    }
+                                    val m = blendMatrix(android.renderscript.Matrix4f(), t, filterStrength)
+                                    applyColorMatrixRS(context, original!!, m)
+                                }
                                 else -> display
                             }
                         }
@@ -349,6 +401,16 @@ fun EditorShell(
                     }
                     Text("增强细节边缘，让画面更清晰", color = Color(0xFFAAAAAA), fontSize = 11.sp)
                     Slider(value = sharpen, onValueChange = { sharpen = it }, valueRange = 0f..4f, colors = SliderDefaults.colors(activeTrackColor = primary))
+                }
+            }
+
+            if (category == EditorCategory.FILTER && selectedTool != "原图") {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("强度", color = Color.Gray, fontSize = 12.sp)
+                        Text("${(filterStrength * 100).toInt()}%", color = Color.Gray, fontSize = 12.sp)
+                    }
+                    Slider(value = filterStrength, onValueChange = { filterStrength = it }, valueRange = 0f..1f, colors = SliderDefaults.colors(activeTrackColor = primary))
                 }
             }
         }

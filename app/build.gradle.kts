@@ -86,6 +86,9 @@ dependencies {
     // Coil 图片加载
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // ONNX Runtime 用于 SOTA 图像修复（LaMa/扩散模型的 ONNX 推理）
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
