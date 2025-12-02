@@ -7,7 +7,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,10 +25,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.scale
 import androidx.core.content.FileProvider
 import com.example.xingtuclone.model.MenuItem
 import com.example.xingtuclone.ui.components.BigActionButton
@@ -216,64 +226,66 @@ fun HomeContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.Top
         ) {
-            HeaderSection()
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 第一排按钮：导入 + 相机
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                BigActionButton(
-                    text = "+ 导入照片",
-                    icon = Icons.Default.Image,
-                    backgroundColor = Color.Black,
-                    contentColor = Color.White,
-                    modifier = Modifier.weight(1f),
-                    onClick = onImportClick
-                )
-                BigActionButton(
-                    text = "相机",
-                    icon = Icons.Default.CameraAlt,
-                    backgroundColor = LightGreenBg,
-                    contentColor = Color.Black,
-                    modifier = Modifier.weight(1f),
-                    onClick = onCameraClick
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 第二排按钮：AI修人像 + 拼图
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                BigActionButton(
-                    text = "AI修人像",
-                    icon = Icons.Default.FaceRetouchingNatural,
-                    backgroundColor = LightGreenBg,
-                    contentColor = Color.Black,
-                    modifier = Modifier.weight(1f),
-                    onClick = onFaceBeautyClick
-                )
-                BigActionButton(
-                    text = "拼图",
-                    icon = Icons.Default.Dashboard,
-                    backgroundColor = LightGreenBg,
-                    contentColor = Color.Black,
-                    modifier = Modifier.weight(1f),
-                    onClick = onCollageClick
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 底部菜单网格
-                Box(modifier = Modifier.height(250.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 48.dp)) {
+                HeaderSection()
+                Spacer(modifier = Modifier.height(64.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BigActionButton(
+                        text = "+ 导入照片",
+                        icon = Icons.Default.Image,
+                        backgroundColor = Color.Black,
+                        contentColor = Color.White,
+                        modifier = Modifier.weight(1f),
+                        onClick = onImportClick
+                    )
+                    BigActionButton(
+                        text = "相机",
+                        icon = Icons.Default.CameraAlt,
+                        backgroundColor = LightGreenBg,
+                        contentColor = Color.Black,
+                        modifier = Modifier.weight(1f),
+                        onClick = onCameraClick
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            BigActionButton(
+                text = "AI修人像",
+                icon = Icons.Default.FaceRetouchingNatural,
+                backgroundColor = LightGreenBg,
+                contentColor = Color.Black,
+                modifier = Modifier.weight(1f),
+                onClick = onFaceBeautyClick
+            )
+            BigActionButton(
+                text = "拼图",
+                icon = Icons.Default.Dashboard,
+                backgroundColor = LightGreenBg,
+                contentColor = Color.Black,
+                modifier = Modifier.weight(1f),
+                onClick = onCollageClick
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        MidHeroCard(
+            onMagicEraseClick = onMagicEraseClick,
+            onCollageClick = onCollageClick,
+            onFaceBeautyClick = onFaceBeautyClick
+        )
+    }
+            Spacer(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)) {
                 MenuGridSection(menuItems) { item ->
                     when (item.title) {
                         "批量修图" -> onBatchClick()
@@ -293,35 +305,133 @@ fun HeaderSection() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 20.dp),
+            .padding(top = 24.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
-                .size(50.dp)
+                .size(64.dp)
+                .shadow(12.dp, CircleShape, clip = true)
                 .background(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFFCCFF00), Color.Black),
-                        radius = 80f
+                        colors = listOf(Color(0xFFCCFF00), Color(0xFF00E1FF), Color.Black),
+                        radius = 120f
                     ),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    shape = CircleShape
                 )
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = "醒图",
-            fontSize = 40.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.Black
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Icon(
-            imageVector = Icons.Default.Camera,
-            contentDescription = "Great Pic",
-            tint = Color(0xFF0099CC),
-            modifier = Modifier.size(24.dp)
-        )
+                .border(2.dp, Color(0x88FFFFFF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoFixHigh,
+                contentDescription = null,
+                tint = Color.Black,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(24.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "醒图",
+                fontSize = 40.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.Black
+            )
+            Box(
+                modifier = Modifier
+                    .height(4.dp)
+                    .width(60.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFFCCFF00), Color(0xFF00E1FF))
+                        )
+                    )
+            )
+        }
+        Spacer(modifier = Modifier.width(24.dp))
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .shadow(8.dp, CircleShape, clip = true)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0x3300E1FF), Color.Transparent),
+                        radius = 60f
+                    ),
+                    shape = CircleShape
+                )
+                .border(1.dp, Color(0x3300E1FF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Camera,
+                contentDescription = null,
+                tint = Color(0xFF0099CC),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun MidHeroCard(
+    onMagicEraseClick: () -> Unit,
+    onCollageClick: () -> Unit,
+    onFaceBeautyClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFFCCFF00), Color(0xFF00E1FF), Color(0x11000000)),
+                    radius = 420f
+                )
+            )
+            .padding(12.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "艺术修图，一键出片",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "热门工具快捷直达",
+                fontSize = 13.sp,
+                color = Color(0xFF666666)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                QuickHeroBtn("魔法消除", Icons.Default.AutoFixHigh, onMagicEraseClick)
+                QuickHeroBtn("拼图", Icons.Default.Dashboard, onCollageClick)
+                QuickHeroBtn("AI修图", Icons.Default.AutoAwesome, onFaceBeautyClick)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickHeroBtn(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (pressed) Color(0x22000000) else Color(0x11FFFFFF))
+            .scale(if (pressed) 0.98f else 1f)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
+    ) {
+        Icon(icon, contentDescription = text, tint = Color.Black, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = text, fontSize = 12.sp, color = Color.Black)
     }
 }
 
