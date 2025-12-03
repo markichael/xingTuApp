@@ -11,16 +11,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.OutputStream
 
+import android.util.Log
+
 /**
  * 将 Bitmap 保存到系统相册
  */
 suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap): Boolean {
+    val TAG = "SaveUtils"
     return withContext(Dispatchers.IO) {
         val filename = "Xingtu_${System.currentTimeMillis()}.jpg"
         var fos: OutputStream? = null
         var success = false
 
         try {
+            Log.d(TAG, "Attempting to save image: $filename")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+ 使用 MediaStore
                 val contentValues = ContentValues().apply {
@@ -34,6 +38,7 @@ suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap): Boolean {
                 val imageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
 
                 if (imageUri != null) {
+                    Log.d(TAG, "Uri created: $imageUri")
                     fos = contentResolver.openOutputStream(imageUri)
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos!!)
                     fos?.close()
@@ -43,17 +48,16 @@ suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap): Boolean {
                     contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
                     contentResolver.update(imageUri, contentValues, null, null)
                     success = true
+                    Log.d(TAG, "Image saved successfully")
+                } else {
+                    Log.e(TAG, "Failed to create MediaStore Uri")
                 }
             } else {
-                // Android 9 及以下（如果不考虑兼容极老版本，其实上面的代码在大部分现代手机都行，
-                // 但为了严谨，老版本通常直接写文件，这里为了简化，我们假设用户都是 Android 10+，
-                // 或者你的 manifest 已经声明了 legacy storage。
-                // 如果你需要严格兼容 Android 9，需要用传统的 FileOutputStream 写入 Environment.getExternalStoragePublicDirectory）
-                // 鉴于目前 99% 的Compose开发环境，我们主要通过 MediaStore 兼容。
-                // 这里简单返回 false 提示用户升级或手动处理，但在实际生产中建议用 File 写入。
-                // 既然是 Demo，我们直接复用 MediaStore 逻辑，它在低版本也能通过 Support 库部分工作，但最好只保证 Android 10+。
+                // Android 9 及以下
+                Log.w(TAG, "Android 9 or lower detected. Save might fail if not handled (Legacy storage).")
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during save", e)
             e.printStackTrace()
             success = false
         }

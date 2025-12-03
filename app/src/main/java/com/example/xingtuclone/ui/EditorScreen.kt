@@ -34,10 +34,12 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import java.io.InputStream
+import android.util.Log
 enum class EditMode { FILTER, ADJUST }
 
 @Composable
 fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
+    val TAG = "EditorScreen"
     val context = LocalContext.current
     val scope = rememberCoroutineScope() // 用于启动保存协程
 
@@ -65,6 +67,7 @@ fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
 
     // 加载图片
     LaunchedEffect(imageUri) {
+        Log.d(TAG, "Starting to load image from URI: $imageUri")
         // 在后台线程加载并处理旋转
         val bitmap = withContext(Dispatchers.IO) {
             loadBitmapWithRotation(context, imageUri)
@@ -72,9 +75,11 @@ fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
 
         // 如果加载成功，把 Bitmap 传给 GPUImage
         if (bitmap != null) {
+            Log.d(TAG, "Image loaded successfully. Size: ${bitmap.width}x${bitmap.height}")
             gpuImageView.setImage(bitmap)
         } else {
             // 如果加载失败（极少情况），为了防止空指针，做个处理
+            Log.e(TAG, "Failed to load image")
             Toast.makeText(context, "图片加载失败", Toast.LENGTH_SHORT).show()
             onBack()
         }
@@ -82,6 +87,7 @@ fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
 
     // 组合滤镜逻辑 (当参数变化时自动应用)
     LaunchedEffect(selectedFilterItem, brightnessValue, contrastValue, saturationValue) {
+        Log.d(TAG, "Applying filter: ${selectedFilterItem.name}, Brightness: $brightnessValue, Contrast: $contrastValue, Saturation: $saturationValue")
         brightnessFilter.setBrightness(brightnessValue)
         contrastFilter.setContrast(contrastValue)
         saturationFilter.setSaturation(saturationValue)
@@ -120,14 +126,17 @@ fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
                     tint = if (isSaving) Color.Gray else Color(0xFFCCFF00), // 保存时变灰
                     modifier = Modifier.clickable(enabled = !isSaving) {
                         isSaving = true
+                        Log.d(TAG, "Save button clicked")
                         scope.launch {
                             try {
                                 // 1. 从 GPUImage 获取当前渲染的 Bitmap
                                 // 注意：capture() 是保存文件，getBitmapWithFilterApplied() 是获取内存中的 Bitmap
                                 val resultBitmap: Bitmap? = withContext(Dispatchers.IO) {
                                     try {
+                                        Log.d(TAG, "Extracting bitmap from GPUImage...")
                                         gpuImageView.gpuImage.getBitmapWithFilterApplied()
                                     } catch (e: Exception) {
+                                        Log.e(TAG, "Error extracting bitmap", e)
                                         e.printStackTrace()
                                         null
                                     }
@@ -135,14 +144,18 @@ fun EditorScreen(imageUri: Uri, onBack: () -> Unit) {
 
                                 // 2. 保存到相册
                                 if (resultBitmap != null) {
+                                    Log.d(TAG, "Bitmap extracted. Saving to gallery...")
                                     val success = saveBitmapToGallery(context, resultBitmap)
                                     // 3. 保存成功后退出编辑页面，或者留在当前页面
                                     if(success){
+                                        Log.d(TAG, "Save successful")
                                         onBack();
                                     } else {
+                                        Log.e(TAG, "Save failed in saveBitmapToGallery")
                                         Toast.makeText(context, "生成图片失败", Toast.LENGTH_SHORT).show()
                                     }
                                 } else {
+                                    Log.e(TAG, "Result bitmap is null")
                                     Toast.makeText(context, "生成图片失败", Toast.LENGTH_SHORT).show()
                                 }
                             } finally {

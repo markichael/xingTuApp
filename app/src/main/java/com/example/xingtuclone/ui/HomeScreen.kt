@@ -51,10 +51,17 @@ fun HomeScreen() {
 
     // 1. 普通修图图片的 Uri
     var selectedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    
+    // 0. 是否显示自定义相册页
+    var showCustomGallery by rememberSaveable { mutableStateOf(false) }
+    var galleryMulti by rememberSaveable { mutableStateOf(false) }
+    var galleryMax by rememberSaveable { mutableStateOf(1) }
+    var galleryTarget by rememberSaveable { mutableStateOf("retouch") }
 
     // 2. AI 修人像图片的 Uri
     var faceBeautyUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var savedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var cropUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var batchUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
     var magicEraseUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
@@ -143,6 +150,41 @@ fun HomeScreen() {
                 onSaved = { uri -> savedImageUri = uri }
             )
         }
+        cropUri != null -> {
+            CropRotateScreen(
+                srcUri = cropUri!!,
+                onBack = { cropUri = null },
+                onDone = { out ->
+                    savedImageUri = out
+                    cropUri = null
+                }
+            )
+        }
+        showCustomGallery -> {
+            GalleryScreen(
+                onBack = { showCustomGallery = false },
+                onImageSelected = { uri ->
+                    when (galleryTarget) {
+                        "retouch" -> selectedImageUri = uri
+                        "face" -> faceBeautyUri = uri
+                        "magic" -> magicEraseUri = uri
+                        "crop" -> cropUri = uri
+                        else -> selectedImageUri = uri
+                    }
+                    showCustomGallery = false
+                },
+                onImagesSelected = { uris ->
+                    when (galleryTarget) {
+                        "collage" -> collageUris = uris
+                        "batch" -> batchUris = uris
+                        else -> if (uris.isNotEmpty()) selectedImageUri = uris.first()
+                    }
+                    showCustomGallery = false
+                },
+                allowMultiSelect = galleryMulti,
+                maxSelection = galleryMax
+            )
+        }
         faceBeautyUri != null -> {
             EditorShell(
                 imageUris = listOf(faceBeautyUri!!),
@@ -176,7 +218,10 @@ fun HomeScreen() {
         else -> {
             HomeContent(
                 onImportClick = {
-                    singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    galleryTarget = "retouch"
+                    galleryMulti = false
+                    galleryMax = 1
+                    showCustomGallery = true
                 },
                 onCameraClick = {
                     val uri = context.createImageFile()
@@ -184,16 +229,34 @@ fun HomeScreen() {
                     cameraLauncher.launch(uri)
                 },
                 onFaceBeautyClick = {
-                    faceBeautyPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    galleryTarget = "face"
+                    galleryMulti = false
+                    galleryMax = 1
+                    showCustomGallery = true
                 },
                 onCollageClick = {
-                    multiplePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    galleryTarget = "collage"
+                    galleryMulti = true
+                    galleryMax = 6
+                    showCustomGallery = true
                 },
                 onBatchClick = {
-                    batchPhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    galleryTarget = "batch"
+                    galleryMulti = true
+                    galleryMax = 20
+                    showCustomGallery = true
                 },
                 onMagicEraseClick = {
-                    magicErasePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    galleryTarget = "magic"
+                    galleryMulti = false
+                    galleryMax = 1
+                    showCustomGallery = true
+                },
+                onCropRotateClick = {
+                    galleryTarget = "crop"
+                    galleryMulti = false
+                    galleryMax = 1
+                    showCustomGallery = true
                 }
             )
         }
@@ -210,7 +273,8 @@ fun HomeContent(
     onFaceBeautyClick: () -> Unit,
     onCollageClick: () -> Unit,
     onBatchClick: () -> Unit,
-    onMagicEraseClick: () -> Unit
+    onMagicEraseClick: () -> Unit,
+    onCropRotateClick: () -> Unit
 ) {
     val menuItems = listOf(
         MenuItem("批量修图", Icons.Outlined.PhotoLibrary),
@@ -279,7 +343,8 @@ fun HomeContent(
         MidHeroCard(
             onMagicEraseClick = onMagicEraseClick,
             onCollageClick = onCollageClick,
-            onFaceBeautyClick = onFaceBeautyClick
+            onFaceBeautyClick = onFaceBeautyClick,
+            onCropRotateClick = onCropRotateClick
         )
     }
             Spacer(modifier = Modifier.weight(1f))
@@ -378,7 +443,8 @@ fun HeaderSection() {
 fun MidHeroCard(
     onMagicEraseClick: () -> Unit,
     onCollageClick: () -> Unit,
-    onFaceBeautyClick: () -> Unit
+    onFaceBeautyClick: () -> Unit,
+    onCropRotateClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -411,6 +477,7 @@ fun MidHeroCard(
                 QuickHeroBtn("魔法消除", Icons.Default.AutoFixHigh, onMagicEraseClick)
                 QuickHeroBtn("拼图", Icons.Default.Dashboard, onCollageClick)
                 QuickHeroBtn("AI修图", Icons.Default.AutoAwesome, onFaceBeautyClick)
+                QuickHeroBtn("裁剪旋转", Icons.Default.Crop, onCropRotateClick)
             }
         }
     }

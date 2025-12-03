@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- 这个名字 external-cache-path 对应代码里的 externalCacheDir -->
-    <external-cache-path name="my_images" path="." />
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="files" path="." />
+    <external-files-path name="external_files" path="Pictures/" />
 </paths>

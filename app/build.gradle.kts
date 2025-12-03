@@ -26,7 +26,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -61,6 +61,7 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.0")
 
     implementation("androidx.compose.ui:ui")
@@ -85,6 +86,8 @@ dependencies {
     implementation("jp.co.cyberagent.android:gpuimage:2.1.0")
     // Coil 图片加载
     implementation("io.coil-kt:coil-compose:2.5.0")
+    // uCrop 图片裁剪
+    implementation("com.github.yalantis:ucrop:2.2.8")
 
     // ONNX Runtime 用于 SOTA 图像修复（LaMa/扩散模型的 ONNX 推理）
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
