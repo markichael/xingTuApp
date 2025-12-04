@@ -13,3 +13,20 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Keystore files
+*.jks
+*.keystore
+*.p12
+*.key
+
+# Google Services (if relevant)
+google-services.json
+
+# OS specific
+Thumbs.db
+desktop.ini
+
+# Trae/IDE specific
+.trae/
+submission/
