@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,6 +61,7 @@ fun SaveResultScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(Color.LightGray),
                 contentAlignment = Alignment.Center
             ) {
@@ -74,23 +77,20 @@ fun SaveResultScreen(
             Spacer(Modifier.height(16.dp))
             Text("分享你的作品", color = Color.DarkGray, fontSize = 14.sp)
             Spacer(Modifier.height(8.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(recentUris) { uri ->
-                    Box(modifier = Modifier.size(72.dp).background(Color.LightGray)) {
+                    Box(modifier = Modifier.size(72.dp).clip(RoundedCornerShape(8.dp)).background(Color.LightGray)) {
                         AndroidView(factory = { ctx -> ImageView(ctx) }, update = { iv -> iv.load(uri) { allowHardware(false); size(300) } }, modifier = Modifier.fillMaxSize())
                     }
                 }
                 item {
-                    Box(modifier = Modifier.size(72.dp).background(Color(0xFFEFEFEF)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(72.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFEFEFEF)), contentAlignment = Alignment.Center) {
                         Text("+", color = Color.Black, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = Color.Black), modifier = Modifier.fillMaxWidth()) {
-                Text("发抖音有机会获流量扶持", color = primary, fontWeight = FontWeight.Bold)
-            }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

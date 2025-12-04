@@ -190,6 +190,7 @@ fun EditorShell(
                             doodleOverlay = null
                             blurMask = null
                             doodleStrokes.clear()
+                            category = EditorCategory.FILTER
                             Toast.makeText(context, "已裁剪", Toast.LENGTH_SHORT).show()
                         }
                     }

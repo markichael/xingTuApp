@@ -155,7 +155,7 @@ fun HomeScreen() {
                 srcUri = cropUri!!,
                 onBack = { cropUri = null },
                 onDone = { out ->
-                    savedImageUri = out
+                    selectedImageUri = out
                     cropUri = null
                 }
             )

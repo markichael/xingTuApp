@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.example.autobuild")
 }
 
 android {
@@ -18,16 +19,27 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        multiDexEnabled = true
         
         // Enable RenderScript
         renderscriptTargetApi = 24
         renderscriptSupportModeEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = "android"
+            keyAlias = "key0"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -49,8 +61,20 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     // 🔥🔥🔥 核心修改结束 🔥🔥🔥
+}
+
+autobuild {
+    cacheDir = "${project.buildDir}/cache_to_clear"
+    dependencyOutputFile = "${rootProject.buildDir}/reports/dependencies/dependency-tree.txt"
 }
 
 dependencies {
@@ -91,6 +115,7 @@ dependencies {
 
     // ONNX Runtime 用于 SOTA 图像修复（LaMa/扩散模型的 ONNX 推理）
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation("androidx.multidex:multidex:2.0.1")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
