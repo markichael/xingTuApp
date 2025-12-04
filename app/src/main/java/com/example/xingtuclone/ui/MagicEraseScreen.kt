@@ -43,6 +43,7 @@ fun MagicEraseScreen(imageUri: Uri, onBack: () -> Unit, onSaved: (Uri) -> Unit) 
     var brushSize by remember { mutableStateOf(24f) }
     var feather by remember { mutableStateOf(12f) }
     var showMask by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(imageUri) {
         val bmp = loadCompressedBitmap(context, imageUri, 1280)
@@ -73,6 +74,25 @@ fun MagicEraseScreen(imageUri: Uri, onBack: () -> Unit, onSaved: (Uri) -> Unit) 
         updatePreview()
     }
 
+    fun doSave() {
+        if (isSaving) return
+        val s = src
+        val m = mask
+        if (s != null && m != null) {
+            isSaving = true
+            val out = OnnxLamaInpainter.inpaint(context, s, m)
+            if (out != null) {
+                scope.launch {
+                    val saved = saveBitmapToGalleryReturnUri(context, out)
+                    isSaving = false
+                    if (saved != null) onSaved(saved)
+                }
+            } else {
+                isSaving = false
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -85,9 +105,14 @@ fun MagicEraseScreen(imageUri: Uri, onBack: () -> Unit, onSaved: (Uri) -> Unit) 
                 .background(Color.Transparent)
                 .clickable { onBack() })
             Text("魔法消除", color = Color.White)
-            Icon(Icons.Default.Check, null, tint = Color(0xFFCCFF00), modifier = Modifier
-                .padding(4.dp)
-                .pointerInput(Unit) {})
+            Icon(
+                Icons.Default.Check,
+                null,
+                tint = if (isSaving) Color.Gray else Color(0xFFCCFF00),
+                modifier = Modifier
+                    .padding(4.dp)
+                    .clickable(enabled = !isSaving) { doSave() }
+            )
         }
 
         Box(modifier = Modifier.fillMaxWidth().weight(1f).background(Color.Black), contentAlignment = Alignment.Center) {
@@ -125,19 +150,7 @@ fun MagicEraseScreen(imageUri: Uri, onBack: () -> Unit, onSaved: (Uri) -> Unit) 
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 FilterChip(selected = showMask, onClick = { showMask = !showMask }, label = { Text(if (showMask) "隐藏蒙版" else "显示蒙版") })
-                Button(onClick = {
-                    val s = src
-                    val m = mask
-                    if (s != null && m != null) {
-                        val out = OnnxLamaInpainter.inpaint(context, s, m)
-                        if (out != null) {
-                            scope.launch {
-                                val saved = saveBitmapToGalleryReturnUri(context, out)
-                                if (saved != null) onSaved(saved)
-                            }
-                        }
-                    }
-                }) { Text("保存") }
+                Button(onClick = { doSave() }, enabled = !isSaving) { Text("保存") }
             }
         }
     }

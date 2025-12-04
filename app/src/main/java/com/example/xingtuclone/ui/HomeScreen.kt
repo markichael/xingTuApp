@@ -135,6 +135,9 @@ fun HomeScreen() {
                     selectedImageUri = null
                     faceBeautyUri = null
                     collageUris = emptyList()
+                    magicEraseUri = null
+                    batchUris = emptyList()
+                    cropUri = null
                 },
                 onRetouch = {
                     singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))

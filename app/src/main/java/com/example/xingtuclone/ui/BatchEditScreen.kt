@@ -96,6 +96,7 @@ fun BatchEditScreen(imageUris: List<Uri>, onBack: () -> Unit) {
                     }
                     isRunning = false
                     Toast.makeText(context, "完成 ${results.size}/${imageUris.size}", Toast.LENGTH_SHORT).show()
+                    onBack()
                 }
             })
         }
@@ -147,6 +148,7 @@ fun BatchEditScreen(imageUris: List<Uri>, onBack: () -> Unit) {
                     }
                     isRunning = false
                     Toast.makeText(context, "已导出 ${results.size}/${imageUris.size}", Toast.LENGTH_SHORT).show()
+                    onBack()
                 }
             },
             enabled = !isRunning,
