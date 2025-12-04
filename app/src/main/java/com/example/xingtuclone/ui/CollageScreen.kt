@@ -225,6 +225,46 @@ fun CollageScreen(imageUris: List<Uri>, onBack: () -> Unit, onHome: () -> Unit) 
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    if (isSaving) return@Button
+                    isSaving = true
+                    scope.launch {
+                        if (captureView == null || captureView!!.width <= 0) {
+                            Toast.makeText(context, "正在渲染中，请稍后再试...", Toast.LENGTH_SHORT).show()
+                            isSaving = false
+                            return@launch
+                        }
+                        try {
+                            val bitmap = viewToBitmap(captureView!!)
+                            if (bitmap != null) {
+                                val success = saveBitmapToGallery(context, bitmap)
+                                if (success) {
+                                    Toast.makeText(context, "已导出到相册", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "保存失败：权限或存储错误", Toast.LENGTH_SHORT).show()
+                                }
+                                if (!bitmap.isRecycled) bitmap.recycle()
+                            } else {
+                                Toast.makeText(context, "保存失败：内存不足，无法生成图片", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            Toast.makeText(context, "发生未知错误: ${e.message}", Toast.LENGTH_LONG).show()
+                        } finally {
+                            isSaving = false
+                        }
+                    }
+                },
+                enabled = !isSaving,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCCFF00), contentColor = Color.Black),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("导出拼图", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

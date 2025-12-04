@@ -122,6 +122,39 @@ fun BatchEditScreen(imageUris: List<Uri>, onBack: () -> Unit) {
                 }
             }
         }
+
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = {
+                if (isRunning) return@Button
+                isRunning = true
+                results = emptyList()
+                progress = 0
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        imageUris.forEachIndexed { idx, uri ->
+                            val full = loadCompressedBitmap(context, uri, 2560)
+                            val out = if (full != null) processOne(full) else null
+                            if (out != null) {
+                                val saved = saveBitmapToGalleryReturnUri(context, out)
+                                withContext(Dispatchers.Main) {
+                                    results = results + listOfNotNull(saved)
+                                    progress = idx + 1
+                                }
+                                if (out != full) out.recycle()
+                            }
+                        }
+                    }
+                    isRunning = false
+                    Toast.makeText(context, "已导出 ${results.size}/${imageUris.size}", Toast.LENGTH_SHORT).show()
+                }
+            },
+            enabled = !isRunning,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCCFF00), contentColor = Color.Black),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Text("导出全部", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
