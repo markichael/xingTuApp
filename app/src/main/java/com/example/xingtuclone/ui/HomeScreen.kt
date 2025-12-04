@@ -36,6 +36,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.scale
 import androidx.core.content.FileProvider
 import com.example.xingtuclone.model.MenuItem
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import com.example.xingtuclone.ui.navigation.AppRoute
 import com.example.xingtuclone.ui.components.BigActionButton
 import com.example.xingtuclone.ui.components.MenuGridSection
 import java.io.File
@@ -46,221 +49,93 @@ import java.util.Locale
 @Composable
 fun HomeScreen() {
     val context = LocalContext.current
+    val vm: HomeViewModel = viewModel()
+    val routeState = vm.route.collectAsState()
 
-    // --- 状态管理 (使用 rememberSaveable 防止后台被杀后数据丢失) ---
-
-    // 1. 普通修图图片的 Uri
-    var selectedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    
-    // 0. 是否显示自定义相册页
-    var showCustomGallery by rememberSaveable { mutableStateOf(false) }
-    var galleryMulti by rememberSaveable { mutableStateOf(false) }
-    var galleryMax by rememberSaveable { mutableStateOf(1) }
-    var galleryTarget by rememberSaveable { mutableStateOf("retouch") }
-
-    // 2. AI 修人像图片的 Uri
-    var faceBeautyUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var savedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var cropUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var batchUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
-    var magicEraseUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-
-    // 3. 拼图图片列表 (多选)
-    var collageUris by rememberSaveable { mutableStateOf<List<Uri>>(emptyList()) }
-
-
-    // 4. 相机拍照的临时 Uri
-    var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-
-
-    // --- 启动器定义 ---
-
-    // A. 单图选择器 (用于普通修图)
-    val singlePhotoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> selectedImageUri = uri }
-    )
-
-    // B. 单图选择器 (用于 AI 修人像)
-    val faceBeautyPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> faceBeautyUri = uri }
-    )
-
-    // C. 多图选择器 (用于拼图，最多 6 张)
-    val multiplePhotoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(6),
-        onResult = { uris ->
-            if (uris.isNotEmpty()) {
-                collageUris = uris
-            }
-        }
-    )
-
-    // E. 批量修图多选
-    val batchPhotoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(20),
-        onResult = { uris -> if (uris.isNotEmpty()) batchUris = uris }
-    )
-
-    // F. 魔法消除单图选择器
-    val magicErasePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> magicEraseUri = uri }
-    )
-
-
-    // D. 相机启动器
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
-        onResult = { success ->
-            if (success && tempCameraUri != null) {
-                // 拍照成功后，默认进入普通修图模式
-                selectedImageUri = tempCameraUri
-            }
-        }
+        onResult = { success -> }
     )
+    var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
-    // --- 页面路由逻辑 (优先级控制) ---
-    // 根据哪个状态不为空，显示哪个页面
-    // 统一编辑入口：根据按钮优先级，进入统一 EditorScreen
-    when {
-        savedImageUri != null -> {
-            SaveResultScreen(
-                savedUri = savedImageUri!!,
-                onBack = { savedImageUri = null },
-                onHome = {
-                    // 统一返回首页：清空所有编辑入口状态
-                    savedImageUri = null
-                    selectedImageUri = null
-                    faceBeautyUri = null
-                    collageUris = emptyList()
-                    magicEraseUri = null
-                    batchUris = emptyList()
-                    cropUri = null
-                },
-                onRetouch = {
-                    singlePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    savedImageUri = null
-                }
-            )
-        }
-        selectedImageUri != null -> {
-            EditorShell(
-                imageUris = listOf(selectedImageUri!!),
-                onBack = { selectedImageUri = null },
-                initialCategory = EditorCategory.FILTER,
-                onSaved = { uri -> savedImageUri = uri }
-            )
-        }
-        cropUri != null -> {
-            CropRotateScreen(
-                srcUri = cropUri!!,
-                onBack = { cropUri = null },
-                onDone = { out ->
-                    selectedImageUri = out
-                    cropUri = null
-                }
-            )
-        }
-        showCustomGallery -> {
-            GalleryScreen(
-                onBack = { showCustomGallery = false },
-                onImageSelected = { uri ->
-                    when (galleryTarget) {
-                        "retouch" -> selectedImageUri = uri
-                        "face" -> faceBeautyUri = uri
-                        "magic" -> magicEraseUri = uri
-                        "crop" -> cropUri = uri
-                        else -> selectedImageUri = uri
-                    }
-                    showCustomGallery = false
-                },
-                onImagesSelected = { uris ->
-                    when (galleryTarget) {
-                        "collage" -> collageUris = uris
-                        "batch" -> batchUris = uris
-                        else -> if (uris.isNotEmpty()) selectedImageUri = uris.first()
-                    }
-                    showCustomGallery = false
-                },
-                allowMultiSelect = galleryMulti,
-                maxSelection = galleryMax
-            )
-        }
-        faceBeautyUri != null -> {
-            EditorShell(
-                imageUris = listOf(faceBeautyUri!!),
-                onBack = { faceBeautyUri = null },
-                initialCategory = EditorCategory.PORTRAIT,
-                onSaved = { uri -> savedImageUri = uri }
-            )
-        }
-        magicEraseUri != null -> {
-            MagicEraseScreen(
-                imageUri = magicEraseUri!!,
-                onBack = { magicEraseUri = null },
-                onSaved = { uri -> savedImageUri = uri }
-            )
-        }
-        collageUris.isNotEmpty() -> {
-            CollageScreen(
-                imageUris = collageUris,
-                onBack = { collageUris = emptyList() },
-                onHome = {
-                    collageUris = emptyList()
-                    selectedImageUri = null
-                    faceBeautyUri = null
-                    savedImageUri = null
-                }
-            )
-        }
-        batchUris.isNotEmpty() -> {
-            BatchEditScreen(imageUris = batchUris, onBack = { batchUris = emptyList() })
-        }
-        else -> {
+    when (val r = routeState.value) {
+        is AppRoute.Home -> {
             HomeContent(
-                onImportClick = {
-                    galleryTarget = "retouch"
-                    galleryMulti = false
-                    galleryMax = 1
-                    showCustomGallery = true
-                },
+                onImportClick = { vm.toGallery("retouch", false, 1) },
                 onCameraClick = {
                     val uri = context.createImageFile()
                     tempCameraUri = uri
                     cameraLauncher.launch(uri)
+                    tempCameraUri?.let { vm.toEditor(listOf(it), EditorCategory.FILTER) }
                 },
-                onFaceBeautyClick = {
-                    galleryTarget = "face"
-                    galleryMulti = false
-                    galleryMax = 1
-                    showCustomGallery = true
+                onFaceBeautyClick = { vm.toGallery("face", false, 1) },
+                onCollageClick = { vm.toGallery("collage", true, 6) },
+                onBatchClick = { vm.toGallery("batch", true, 20) },
+                onMagicEraseClick = { vm.toGallery("magic", false, 1) },
+                onCropRotateClick = { vm.toGallery("crop", false, 1) }
+            )
+        }
+        is AppRoute.Gallery -> {
+            GalleryScreen(
+                onBack = { vm.toHome() },
+                onImageSelected = { uri ->
+                    when (r.target) {
+                        "retouch" -> vm.toEditor(listOf(uri), EditorCategory.FILTER)
+                        "face" -> vm.toEditor(listOf(uri), EditorCategory.PORTRAIT)
+                        "magic" -> vm.toMagicErase(uri)
+                        "crop" -> vm.toCrop(uri)
+                        else -> vm.toEditor(listOf(uri), EditorCategory.FILTER)
+                    }
                 },
-                onCollageClick = {
-                    galleryTarget = "collage"
-                    galleryMulti = true
-                    galleryMax = 6
-                    showCustomGallery = true
+                onImagesSelected = { uris ->
+                    when (r.target) {
+                        "collage" -> vm.toCollage(uris)
+                        "batch" -> vm.toBatch(uris)
+                        else -> if (uris.isNotEmpty()) vm.toEditor(listOf(uris.first()), EditorCategory.FILTER)
+                    }
                 },
-                onBatchClick = {
-                    galleryTarget = "batch"
-                    galleryMulti = true
-                    galleryMax = 20
-                    showCustomGallery = true
-                },
-                onMagicEraseClick = {
-                    galleryTarget = "magic"
-                    galleryMulti = false
-                    galleryMax = 1
-                    showCustomGallery = true
-                },
-                onCropRotateClick = {
-                    galleryTarget = "crop"
-                    galleryMulti = false
-                    galleryMax = 1
-                    showCustomGallery = true
-                }
+                allowMultiSelect = r.allowMulti,
+                maxSelection = r.max
+            )
+        }
+        is AppRoute.Editor -> {
+            EditorShell(
+                imageUris = r.uris,
+                onBack = { vm.toHome() },
+                initialCategory = r.initialCategory,
+                onSaved = { uri -> vm.toSaveResult(uri) }
+            )
+        }
+        is AppRoute.MagicErase -> {
+            MagicEraseScreen(
+                imageUri = r.uri,
+                onBack = { vm.toHome() },
+                onSaved = { uri -> vm.toSaveResult(uri) }
+            )
+        }
+        is AppRoute.Collage -> {
+            CollageScreen(
+                imageUris = r.uris,
+                onBack = { vm.toHome() },
+                onHome = { vm.toHome() }
+            )
+        }
+        is AppRoute.BatchEdit -> {
+            BatchEditScreen(imageUris = r.uris, onBack = { vm.toHome() })
+        }
+        is AppRoute.CropRotate -> {
+            CropRotateScreen(
+                srcUri = r.uri,
+                onBack = { vm.toHome() },
+                onDone = { out -> vm.toEditor(listOf(out), EditorCategory.FILTER) }
+            )
+        }
+        is AppRoute.SaveResult -> {
+            SaveResultScreen(
+                savedUri = r.uri,
+                onBack = { vm.toHome() },
+                onHome = { vm.toHome() },
+                onRetouch = { vm.toGallery("retouch", false, 1) }
             )
         }
     }

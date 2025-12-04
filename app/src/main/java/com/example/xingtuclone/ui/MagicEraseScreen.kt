@@ -83,7 +83,7 @@ fun MagicEraseScreen(imageUri: Uri, onBack: () -> Unit, onSaved: (Uri) -> Unit) 
             val out = OnnxLamaInpainter.inpaint(context, s, m)
             if (out != null) {
                 scope.launch {
-                    val saved = saveBitmapToGalleryReturnUri(context, out)
+                    val saved = com.example.xingtuclone.ui.utils.Exporter.exportBitmap(context, out)
                     isSaving = false
                     if (saved != null) onSaved(saved)
                 }
