@@ -57,47 +57,9 @@ import com.example.xingtuclone.utils.BeautyProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.xingtuclone.utils.ColorMatrixUtils
 
 enum class EditorCategory { TEMPLATE, PORTRAIT, FILTER, ADJUST, STICKER, TEXT, EFFECT }
-
-private fun matRM(vararg v: Float): android.renderscript.Matrix4f {
-    val m = android.renderscript.Matrix4f(v)
-    m.transpose()
-    return m
-}
-
-private fun saturationMatrix(s: Float): android.renderscript.Matrix4f {
-    val rw = 0.299f
-    val gw = 0.587f
-    val bw = 0.114f
-    val r0c0 = (1 - s) * rw + s
-    val r0c1 = (1 - s) * gw
-    val r0c2 = (1 - s) * bw
-    val r1c0 = (1 - s) * rw
-    val r1c1 = (1 - s) * gw + s
-    val r1c2 = (1 - s) * bw
-    val r2c0 = (1 - s) * rw
-    val r2c1 = (1 - s) * gw
-    val r2c2 = (1 - s) * bw + s
-    val data = floatArrayOf(
-        r0c0, r0c1, r0c2, 0f,
-        r1c0, r1c1, r1c2, 0f,
-        r2c0, r2c1, r2c2, 0f,
-        0f,   0f,   0f,   1f
-    )
-    return android.renderscript.Matrix4f(data).apply { transpose() }
-}
-
-private fun brightMatrix(b: Float): android.renderscript.Matrix4f {
-    return android.renderscript.Matrix4f(
-        floatArrayOf(
-            b, 0f, 0f, 0f,
-            0f, b, 0f, 0f,
-            0f, 0f, b, 0f,
-            0f, 0f, 0f, 1f
-        )
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,8 +183,8 @@ fun EditorShell(
             EditorCategory.FILTER -> {
                 val target = when (selectedTool) {
                     "原图" -> android.renderscript.Matrix4f()
-                    "暖色" -> brightMatrix(1.02f)
-                    "冷色" -> matRM(
+                    "暖色" -> ColorMatrixUtils.brightMatrix(1.02f)
+                    "冷色" -> ColorMatrixUtils.matRM(
                         0.95f, 0f,    0f,    0f,
                         0f,    1.0f,  0f,    0f,
                         0f,    0.05f, 1.05f, 0f,
@@ -230,35 +192,35 @@ fun EditorShell(
                     )
                     "黑白" -> {
                         val rw = 0.299f; val gw = 0.587f; val bw = 0.114f
-                        matRM(
+                        ColorMatrixUtils.matRM(
                             rw, gw, bw, 0f,
                             rw, gw, bw, 0f,
                             rw, gw, bw, 0f,
                             0f, 0f, 0f, 1f
                         )
                     }
-                    "复古" -> matRM(
+                    "复古" -> ColorMatrixUtils.matRM(
                         0.393f, 0.769f, 0.189f, 0f,
                         0.349f, 0.686f, 0.168f, 0f,
                         0.272f, 0.534f, 0.131f, 0f,
                         0f,     0f,     0f,     1f
                     )
-                    "增饱和" -> saturationMatrix(1.35f)
-                    "降饱和" -> saturationMatrix(0.75f)
-                    "柔和" -> saturationMatrix(0.85f)
-                    "青橙" -> matRM(
+                    "增饱和" -> ColorMatrixUtils.saturationMatrix(1.35f)
+                    "降饱和" -> ColorMatrixUtils.saturationMatrix(0.75f)
+                    "柔和" -> ColorMatrixUtils.saturationMatrix(0.85f)
+                    "青橙" -> ColorMatrixUtils.matRM(
                         1.05f, -0.04f, 0f,   0f,
                         0f,    0.95f,  0f,   0f,
                         0f,     0.06f, 1.06f,0f,
                         0f,     0f,    0f,   1f
                     )
-                    "粉调" -> matRM(
+                    "粉调" -> ColorMatrixUtils.matRM(
                         1.06f, 0.02f, 0.02f, 0f,
                         0.02f, 0.98f, 0.0f,  0f,
                         0.02f, 0.0f,  1.02f, 0f,
                         0f,    0f,    0f,    1f
                     )
-                    "绿野" -> matRM(
+                    "绿野" -> ColorMatrixUtils.matRM(
                         0.95f, 0.0f,  0.0f,  0f,
                         0.05f, 1.05f, 0.0f,  0f,
                         0.0f,  0.0f,  0.95f, 0f,
@@ -266,8 +228,8 @@ fun EditorShell(
                     )
                     else -> android.renderscript.Matrix4f()
                 }
-                val matrix = blendMatrix(android.renderscript.Matrix4f(), target, filterStrength)
-                val bmp = withContext(Dispatchers.IO) { applyColorMatrixRS(context, base, matrix) }
+                val matrix = ColorMatrixUtils.blendMatrix(android.renderscript.Matrix4f(), target, filterStrength)
+                val bmp = withContext(Dispatchers.IO) { ColorMatrixUtils.applyColorMatrixRS(context, base, matrix) }
                 if (bmp != null) display = bmp
             }
             EditorCategory.EFFECT -> {
@@ -376,8 +338,8 @@ fun EditorShell(
                                 EditorCategory.FILTER -> {
                                     val t = when (selectedTool) {
                                         "原图" -> android.renderscript.Matrix4f()
-                                        "暖色" -> brightMatrix(1.02f)
-                                        "冷色" -> matRM(
+                                        "暖色" -> ColorMatrixUtils.brightMatrix(1.02f)
+                                        "冷色" -> ColorMatrixUtils.matRM(
                                             0.95f, 0f,    0f,    0f,
                                             0f,    1.0f,  0f,    0f,
                                             0f,    0.05f, 1.05f, 0f,
@@ -385,35 +347,35 @@ fun EditorShell(
                                         )
                                         "黑白" -> {
                                             val rw = 0.299f; val gw = 0.587f; val bw = 0.114f
-                                            matRM(
+                                            ColorMatrixUtils.matRM(
                                                 rw, gw, bw, 0f,
                                                 rw, gw, bw, 0f,
                                                 rw, gw, bw, 0f,
                                                 0f, 0f, 0f, 1f
                                             )
                                         }
-                                        "复古" -> matRM(
+                                        "复古" -> ColorMatrixUtils.matRM(
                                             0.393f, 0.769f, 0.189f, 0f,
                                             0.349f, 0.686f, 0.168f, 0f,
                                             0.272f, 0.534f, 0.131f, 0f,
                                             0f,     0f,     0f,     1f
                                         )
-                                        "增饱和" -> saturationMatrix(1.35f)
-                                        "降饱和" -> saturationMatrix(0.75f)
-                                        "柔和" -> saturationMatrix(0.85f)
-                                        "青橙" -> matRM(
+                                        "增饱和" -> ColorMatrixUtils.saturationMatrix(1.35f)
+                                        "降饱和" -> ColorMatrixUtils.saturationMatrix(0.75f)
+                                        "柔和" -> ColorMatrixUtils.saturationMatrix(0.85f)
+                                        "青橙" -> ColorMatrixUtils.matRM(
                                             1.05f, -0.04f, 0f,   0f,
                                             0f,    0.95f,  0f,   0f,
                                             0f,     0.06f, 1.06f,0f,
                                             0f,     0f,    0f,   1f
                                         )
-                                        "粉调" -> matRM(
+                                        "粉调" -> ColorMatrixUtils.matRM(
                                             1.06f, 0.02f, 0.02f, 0f,
                                             0.02f, 0.98f, 0.0f,  0f,
                                             0.02f, 0.0f,  1.02f, 0f,
                                             0f,    0f,    0f,    1f
                                         )
-                                        "绿野" -> matRM(
+                                        "绿野" -> ColorMatrixUtils.matRM(
                                             0.95f, 0.0f,  0.0f,  0f,
                                             0.05f, 1.05f, 0.0f,  0f,
                                             0.0f,  0.0f,  0.95f, 0f,
@@ -421,8 +383,8 @@ fun EditorShell(
                                         )
                                         else -> android.renderscript.Matrix4f()
                                     }
-                                    val m = blendMatrix(android.renderscript.Matrix4f(), t, filterStrength)
-                                    applyColorMatrixRS(context, baseOrig, m)
+                                    val m = ColorMatrixUtils.blendMatrix(android.renderscript.Matrix4f(), t, filterStrength)
+                                    ColorMatrixUtils.applyColorMatrixRS(context, baseOrig, m)
                                 }
                                 EditorCategory.EFFECT -> {
                                     if (selectedTool == "涂鸦") {

@@ -37,6 +37,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.xingtuclone.utils.ColorMatrixUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -615,35 +616,6 @@ fun EditorScreen(imageUris: List<Uri>, onBack: () -> Unit, initialMode: EditorMo
     }
 }
 
-fun applyColorMatrixRS(context: Context, bitmap: Bitmap, matrix: android.renderscript.Matrix4f): Bitmap? {
-    if (bitmap.isRecycled) return null
-    return try {
-        val rs = android.renderscript.RenderScript.create(context)
-        val inAlloc = android.renderscript.Allocation.createFromBitmap(rs, bitmap, android.renderscript.Allocation.MipmapControl.MIPMAP_NONE, android.renderscript.Allocation.USAGE_SCRIPT)
-        val outAlloc = android.renderscript.Allocation.createTyped(rs, inAlloc.type)
-        val color = android.renderscript.ScriptIntrinsicColorMatrix.create(rs, android.renderscript.Element.U8_4(rs))
-        color.setColorMatrix(matrix)
-        color.forEach(inAlloc, outAlloc)
-        val out = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
-        outAlloc.copyTo(out)
-        inAlloc.destroy(); outAlloc.destroy(); color.destroy(); rs.destroy()
-        out
-    } catch (e: Exception) {
-        null
-    }
-}
-
-fun blendMatrix(identity: android.renderscript.Matrix4f, target: android.renderscript.Matrix4f, alpha: Float): android.renderscript.Matrix4f {
-    val a = alpha.coerceIn(0f, 1f)
-    val id = identity.array
-    val tg = target.array
-    val out = FloatArray(16)
-    for (i in 0 until 16) {
-        out[i] = id[i] * (1f - a) + tg[i] * a
-    }
-    return android.renderscript.Matrix4f(out)
-}
-
 @Composable
 fun FilterEditor(imageUri: Uri?, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -706,7 +678,7 @@ fun FilterEditor(imageUri: Uri?, onBack: () -> Unit) {
                 Button(onClick = {
                     val bmp = original ?: return@Button
                     scope.launch {
-                        val preview = withContext(Dispatchers.IO) { applyColorMatrixRS(context, bmp, pair.second) }
+                        val preview = withContext(Dispatchers.IO) { ColorMatrixUtils.applyColorMatrixRS(context, bmp, pair.second) }
                         if (preview != null) display = preview
                     }
                 }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) { Text(pair.first, color = Color.White) }

@@ -1,9 +1,8 @@
-package com.example.xingtuclone.ui
+﻿package com.example.xingtuclone.ui
 
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
-import android.renderscript.Matrix4f
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.xingtuclone.utils.BeautyProcessor
+import com.example.xingtuclone.utils.ColorMatrixUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,8 +60,8 @@ fun BatchEditScreen(imageUris: List<Uri>, onBack: () -> Unit) {
                 out
             }
             else -> {
-                val mat = saturationMatrix(0.85f)
-                applyColorMatrixRS(context, input, mat)
+                val mat = ColorMatrixUtils.saturationMatrix(0.85f)
+                ColorMatrixUtils.applyColorMatrixRS(context, input, mat)
             }
         }
     }
@@ -158,24 +158,5 @@ fun BatchEditScreen(imageUris: List<Uri>, onBack: () -> Unit) {
             Text("导出全部", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
-}
-
-private fun matRM(vararg v: Float): Matrix4f {
-    val m = Matrix4f(v.copyOf())
-    m.transpose()
-    return m
-}
-
-private fun saturationMatrix(s: Float): Matrix4f {
-    val lr = 0.299f
-    val lg = 0.587f
-    val lb = 0.114f
-    val inv = 1f - s
-    return matRM(
-        lr * inv + s, lg * inv,       lb * inv,       0f,
-        lr * inv,     lg * inv + s,   lb * inv,       0f,
-        lr * inv,     lg * inv,       lb * inv + s,   0f,
-        0f,           0f,             0f,             1f
-    )
 }
 

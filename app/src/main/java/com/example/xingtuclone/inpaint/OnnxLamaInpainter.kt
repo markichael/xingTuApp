@@ -1,3 +1,24 @@
+/**
+ * ============================================
+ * OnnxLamaInpainter.kt - ONNX LaMa 模型推理器
+ * ============================================
+ * 功能说明：
+ * AI魔法消除功能的核心，基于 ONNX Runtime 运行 LaMa 深度学习模型
+ * 
+ * 技术亮点：
+ * - 端侧推理：无需云服务，所有计算在本地完成
+ * - LaMa 模型：SOTA 图像修复模型，效果优秀
+ * - Fallback 机制：模型加载失败时降级为高斯模糊混合
+ * - 单例模式：避免重复加载模型，节省内存
+ * 
+ * 核心流程：
+ * 1. 初始化：加载 assets/models/lama.onnx 模型
+ * 2. 预处理：图像和蒙版 resize 到 512x512
+ * 3. 转换：将 Bitmap 转为 CHW (Channel-Height-Width) Float 张量
+ * 4. 推理：运行 ONNX 模型进行图像修复
+ * 5. 后处理：将输出转换回 Bitmap 并还原尺寸
+ * ============================================
+ */
 package com.example.xingtuclone.inpaint
 
 import android.content.Context
@@ -14,14 +35,29 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import java.nio.FloatBuffer
 
+/**
+ * ONNX LaMa 模型推理器单例
+ * 负责 AI 魔法消除功能的核心推理逻辑
+ */
 object OnnxLamaInpainter {
     @Volatile private var env: OrtEnvironment? = null
     @Volatile private var session: OrtSession? = null
     @Volatile private var initialized = false
 
+    /**
+     * 初始化 ONNX 环境和加载模型
+     * 只会初始化一次，多线程安全
+     * @param context 上下文，用于读取 assets 中的模型文件
+     */
+    /**
+     * 初始化 ONNX 环境和加载模型
+     * 只会初始化一次，多线程安全
+     * @param context 上下文，用于读取 assets 中的模型文件
+     */
     fun init(context: Context) {
         if (initialized) return
         try {
+            // 从 assets 中读取 lama.onnx 模型文件
             val modelBytes = context.assets.open("models/lama.onnx").use { it.readBytes() }
             val environment = OrtEnvironment.getEnvironment()
             val sess = environment.createSession(modelBytes)
@@ -29,10 +65,18 @@ object OnnxLamaInpainter {
             session = sess
             initialized = true
         } catch (_: Throwable) {
+            // 模型加载失败，将使用 fallback 方法
             initialized = false
         }
     }
 
+    /**
+     * 执行图像修复（Inpainting）
+     * @param context 上下文
+     * @param src 原始图像
+     * @param mask 蒙版（白色区域表示需要消除的部分）
+     * @return 修复后的图像
+     */
     fun inpaint(context: Context, src: Bitmap, mask: Bitmap): Bitmap {
         init(context)
         return try {
@@ -41,7 +85,7 @@ object OnnxLamaInpainter {
         } catch (_: Throwable) {
             fallbackBlurBlend(context, src, mask, 18f)
         }
-    }
+     }
 
     private fun runOnnxLama(session: OrtSession, src: Bitmap, mask: Bitmap): Bitmap {
         val targetSize = 512
